@@ -1,12 +1,27 @@
 {
   "version": 2,
-  "buildCommand": "npm run build",
-  "devCommand": "npm run dev",
-  "installCommand": "npm install",
-  "framework": "nextjs",
-  "regions": ["gru1"],
+  "builds": [
+    {
+      "src": "server.js",
+      "use": "@vercel/node"
+    },
+    {
+      "src": "client/package.json",
+      "use": "@vercel/static-build",
+      "config": { "distDir": "build" }
+    }
+  ],
+  "routes": [
+    {
+      "src": "/api/(.*)",
+      "dest": "/server.js"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/client/build/$1"
+    }
+  ],
   "env": {
-    "NEXT_PUBLIC_SUPABASE_URL": "sua_url_do_supabase",
-    "NEXT_PUBLIC_SUPABASE_ANON_KEY": "sua_chave_anonima_do_supabase"
+    "NODE_ENV": "production"
   }
 } 
