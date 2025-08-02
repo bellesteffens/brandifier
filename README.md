@@ -1,192 +1,217 @@
-# Brandifier
+# 🤖 Assistente de Marketing com IA
 
-Sistema de gerenciamento de materiais de marca e identidade visual.
+Um web app completo para gerar conteúdo personalizado para redes sociais usando Inteligência Artificial. Os usuários preenchem um formulário e recebem sugestões estratégicas de posts e recomendações de marketing digital.
 
-## Funcionalidades
+## ✨ Funcionalidades
 
-- Autenticação de usuários (Admin e Cliente)
-- Dashboard com estatísticas de solicitações
-- Formulário de solicitação de materiais
-- Guia da marca personalizado
-- Upload e gerenciamento de materiais editáveis
-- Chat integrado entre cliente e admin
+### 👥 Sistema de Usuários
+- **Dois tipos de usuários**: Admin e Cliente
+- Autenticação JWT segura
+- Usuários de teste pré-configurados
 
-## Tecnologias
+### 📝 Formulário de Marketing (Clientes)
+- Nicho de mercado
+- Objetivo principal (vender, autoridade, seguidores, educar)
+- Público-alvo detalhado
+- Frequência de posts (3, 5 ou 7 por semana)
+- Tom de voz (profissional, amigável, divertido, inspirador)
 
-- Next.js 14
-- TypeScript
-- Tailwind CSS
-- Supabase (Autenticação e Banco de Dados)
-- Chart.js
-- React Hook Form
-- Zod
+### 🤖 Geração de Conteúdo com IA
+- **5 sugestões de posts** personalizados incluindo:
+  - Título criativo
+  - Legenda (até 300 caracteres)
+  - Tipo de post (Reel, carrossel, imagem, vídeo)
+  - Hashtags relevantes
 
-## Configuração do Projeto
+### 🎯 Recomendações Inteligentes
+- Melhores horários para postar
+- Tipo de conteúdo mais indicado
+- Frequência ideal recomendada
+- Melhor CTA (call to action) para o nicho
+- Dica estratégica de engajamento
 
-1. Clone o repositório:
+### 👨‍💼 Painel Administrativo
+- Dashboard com estatísticas do sistema
+- Visualização de todos os formulários
+- Gerenciamento de usuários
+- Relatórios de atividade
+
+## 🚀 Tecnologias Utilizadas
+
+### Backend
+- **Node.js** com Express.js
+- **SQLite** para banco de dados
+- **JWT** para autenticação
+- **OpenAI API** (GPT-3.5-turbo)
+- **bcryptjs** para hash de senhas
+
+### Frontend
+- **React** com TypeScript
+- **Tailwind CSS** para design
+- **React Router** para navegação
+- **Axios** para chamadas HTTP
+- **Context API** para gerenciamento de estado
+
+## 📦 Instalação
+
+### Pré-requisitos
+- Node.js (versão 14 ou superior)
+- npm ou yarn
+- Chave da API OpenAI
+
+### 1. Clone o repositório
 ```bash
-git clone https://seu-repositorio/brandifier.git
-cd brandifier
+git clone <url-do-repositorio>
+cd assistente-marketing-ia
 ```
 
-2. Instale as dependências:
+### 2. Instale as dependências do backend
 ```bash
 npm install
-npm install -D tailwindcss postcss autoprefixer
 ```
 
-3. Configure as variáveis de ambiente:
-Crie um arquivo `.env.local` na raiz do projeto e adicione:
-```
-NEXT_PUBLIC_SUPABASE_URL=sua_url_do_supabase
-NEXT_PUBLIC_SUPABASE_ANON_KEY=sua_chave_anonima_do_supabase
-```
-
-4. Configure o banco de dados Supabase:
-- Crie um novo projeto no Supabase
-- Execute as seguintes queries SQL para criar as tabelas necessárias:
-
-```sql
--- Tabela de perfis
-CREATE TABLE profiles (
-  id UUID REFERENCES auth.users ON DELETE CASCADE,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL,
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL,
-  role TEXT NOT NULL CHECK (role IN ('admin', 'client')),
-  company_name TEXT,
-  PRIMARY KEY (id)
-);
-
--- Trigger para atualizar o updated_at
-CREATE TRIGGER handle_updated_at BEFORE UPDATE ON profiles
-  FOR EACH ROW EXECUTE FUNCTION moddatetime (updated_at);
-
--- Tabela de solicitações de material
-CREATE TABLE material_requests (
-  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL,
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL,
-  user_id UUID REFERENCES profiles(id) ON DELETE CASCADE,
-  material_type TEXT NOT NULL,
-  service_value NUMERIC NOT NULL,
-  deadline TIMESTAMP WITH TIME ZONE NOT NULL,
-  observations TEXT,
-  status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'in_progress', 'completed'))
-);
-
--- Tabela de guia da marca
-CREATE TABLE brand_guides (
-  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL,
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL,
-  user_id UUID REFERENCES profiles(id) ON DELETE CASCADE,
-  fonts TEXT[] DEFAULT '{}',
-  colors TEXT[] DEFAULT '{}',
-  logo_url TEXT,
-  additional_files TEXT[] DEFAULT '{}'
-);
-
--- Tabela de mensagens do chat
-CREATE TABLE chat_messages (
-  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL,
-  user_id UUID REFERENCES profiles(id) ON DELETE CASCADE,
-  admin_id UUID REFERENCES profiles(id) ON DELETE CASCADE,
-  content TEXT NOT NULL
-);
-
--- Políticas de segurança RLS (Row Level Security)
-ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
-ALTER TABLE material_requests ENABLE ROW LEVEL SECURITY;
-ALTER TABLE brand_guides ENABLE ROW LEVEL SECURITY;
-ALTER TABLE chat_messages ENABLE ROW LEVEL SECURITY;
-
--- Políticas para perfis
-CREATE POLICY "Usuários podem ver seu próprio perfil"
-  ON profiles FOR SELECT
-  USING (auth.uid() = id);
-
-CREATE POLICY "Admins podem ver todos os perfis"
-  ON profiles FOR SELECT
-  USING (auth.uid() IN (
-    SELECT id FROM profiles WHERE role = 'admin'
-  ));
-
--- Políticas para solicitações
-CREATE POLICY "Usuários podem ver suas próprias solicitações"
-  ON material_requests FOR SELECT
-  USING (auth.uid() = user_id);
-
-CREATE POLICY "Admins podem ver todas as solicitações"
-  ON material_requests FOR ALL
-  USING (auth.uid() IN (
-    SELECT id FROM profiles WHERE role = 'admin'
-  ));
-
-CREATE POLICY "Usuários podem criar solicitações"
-  ON material_requests FOR INSERT
-  WITH CHECK (auth.uid() = user_id);
-
--- Políticas para guia da marca
-CREATE POLICY "Usuários podem gerenciar seu guia da marca"
-  ON brand_guides FOR ALL
-  USING (auth.uid() = user_id);
-
-CREATE POLICY "Admins podem ver todos os guias"
-  ON brand_guides FOR SELECT
-  USING (auth.uid() IN (
-    SELECT id FROM profiles WHERE role = 'admin'
-  ));
-
--- Políticas para chat
-CREATE POLICY "Usuários podem ver suas próprias mensagens"
-  ON chat_messages FOR SELECT
-  USING (auth.uid() = user_id OR auth.uid() = admin_id);
-
-CREATE POLICY "Usuários podem enviar mensagens"
-  ON chat_messages FOR INSERT
-  WITH CHECK (auth.uid() = user_id OR auth.uid() = admin_id);
-```
-
-5. Inicie o servidor de desenvolvimento:
+### 3. Instale as dependências do frontend
 ```bash
+cd client
+npm install
+cd ..
+```
+
+### 4. Configure as variáveis de ambiente
+Edite o arquivo `.env` na raiz do projeto:
+```env
+PORT=5000
+JWT_SECRET=sua_chave_secreta_super_forte_aqui_123456789
+OPENAI_API_KEY=sua_chave_openai_aqui
+NODE_ENV=development
+```
+
+⚠️ **IMPORTANTE**: Substitua `sua_chave_openai_aqui` pela sua chave real da API OpenAI.
+
+### 5. Execute o projeto
+
+#### Modo desenvolvimento (backend + frontend separados)
+```bash
+# Terminal 1 - Backend
 npm run dev
+
+# Terminal 2 - Frontend
+npm run client
 ```
 
-O projeto estará disponível em `http://localhost:3000`
+#### Modo produção
+```bash
+# Build do frontend
+npm run build
 
-## Estrutura do Projeto
-
-```
-brandifier/
-├── src/
-│   ├── app/
-│   │   ├── auth/
-│   │   ├── dashboard/
-│   │   ├── requests/
-│   │   ├── brand-guide/
-│   │   ├── materials/
-│   │   └── chat/
-│   ├── components/
-│   │   ├── layout/
-│   │   ├── auth/
-│   │   └── ui/
-│   ├── lib/
-│   │   └── supabase.ts
-│   └── types/
-│       └── supabase.ts
-├── public/
-└── package.json
+# Executar servidor
+npm start
 ```
 
-## Contribuição
+## 🧪 Contas de Teste
 
-1. Faça o fork do projeto
-2. Crie uma branch para sua feature (`git checkout -b feature/nova-feature`)
-3. Commit suas mudanças (`git commit -m 'Adiciona nova feature'`)
-4. Push para a branch (`git push origin feature/nova-feature`)
+O sistema vem com usuários de teste pré-configurados:
+
+### Admin
+- **Email**: admin@teste.com
+- **Senha**: admin123
+- **Acesso**: Painel administrativo completo
+
+### Cliente
+- **Email**: cliente@teste.com
+- **Senha**: cliente123
+- **Acesso**: Criação de formulários e geração de conteúdo
+
+## 🔄 Fluxo de Uso
+
+### Para Clientes:
+1. **Login** com as credenciais de cliente
+2. **Preencher formulário** com informações do negócio
+3. **Gerar conteúdo** com IA
+4. **Visualizar resultados**:
+   - 5 posts personalizados
+   - Recomendações estratégicas
+5. **Editar e salvar** o conteúdo conforme necessário
+
+### Para Admins:
+1. **Login** com as credenciais de admin
+2. **Dashboard** com estatísticas do sistema
+3. **Gerenciar usuários** (visualizar, editar, deletar)
+4. **Monitorar formulários** e conteúdos gerados
+5. **Acompanhar métricas** de uso do sistema
+
+## 🌟 Principais Endpoints da API
+
+### Autenticação
+- `POST /api/auth/login` - Login de usuário
+- `POST /api/auth/register` - Registro de usuário
+
+### Formulários
+- `GET /api/forms/my-forms` - Listar formulários do usuário
+- `POST /api/forms` - Criar novo formulário
+- `GET /api/forms/:id` - Buscar formulário específico
+
+### IA
+- `POST /api/ai/generate/:form_id` - Gerar conteúdo com IA
+- `PUT /api/ai/posts/:post_id` - Editar post gerado
+
+### Admin
+- `GET /api/users` - Listar todos os usuários
+- `GET /api/users/stats/overview` - Estatísticas do sistema
+
+## 🎨 Design e UX
+
+- **Design responsivo** com Tailwind CSS
+- **Interface moderna** e intuitiva
+- **Animações suaves** e feedback visual
+- **Acessibilidade** considerada em todos os componentes
+- **Loading states** e tratamento de erros
+
+## 🛡️ Segurança
+
+- **Autenticação JWT** com expiração de 24h
+- **Senhas hasheadas** com bcrypt
+- **Proteção de rotas** por tipo de usuário
+- **Validação de dados** no frontend e backend
+- **Rate limiting** (preparado para implementação)
+
+## 📊 Banco de Dados
+
+### Estrutura das tabelas:
+- **users**: Usuários do sistema
+- **marketing_forms**: Formulários de marketing
+- **generated_posts**: Posts gerados pela IA
+- **recommendations**: Recomendações personalizadas
+
+## 🚀 Deploy
+
+O projeto está preparado para deploy em plataformas como:
+- **Heroku**
+- **Vercel** (frontend)
+- **Railway**
+- **DigitalOcean**
+
+## 🤝 Contribuição
+
+1. Fork o projeto
+2. Crie uma branch para sua feature (`git checkout -b feature/AmazingFeature`)
+3. Commit suas mudanças (`git commit -m 'Add some AmazingFeature'`)
+4. Push para a branch (`git push origin feature/AmazingFeature`)
 5. Abra um Pull Request
 
-## Licença
+## 📝 Licença
 
-Este projeto está sob a licença MIT.
+Este projeto está sob a licença MIT. Veja o arquivo `LICENSE` para mais detalhes.
+
+## 🆘 Suporte
+
+Se encontrar algum problema:
+
+1. Verifique se todas as dependências foram instaladas
+2. Confirme se a chave da OpenAI está configurada corretamente
+3. Verifique os logs do console para erros
+4. Abra uma issue no repositório
+
+---
+
+**Desenvolvido com ❤️ para revolucionar o marketing digital com IA**
